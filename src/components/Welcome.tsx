@@ -1,5 +1,4 @@
 import { Button } from './ui/button';
-import { ArrowRight } from 'lucide-react';
 import logo from '../assets/Logo.png';
 
 interface WelcomeProps {

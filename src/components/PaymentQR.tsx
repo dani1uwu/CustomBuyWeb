@@ -1,86 +1,167 @@
-import { useState } from 'react';
-import { QrCode, CheckCircle2, CreditCard } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, XCircle, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+
+const BACKEND_API_URL = 'http://localhost:3001/api/create-preference';
 
 interface PaymentQRProps {
-  onPaymentComplete: () => void;
+    onPaymentComplete?: () => void;
 }
 
+const fixedTotalAmount = 174.0;
+type PaymentStatus = 'loading' | 'qr_ready' | 'error';
+
 export function PaymentQR({ onPaymentComplete }: PaymentQRProps) {
-  const [isScanning, setIsScanning] = useState(false);
+    const [checkoutUrl, setCheckoutUrl] = useState<string | undefined>(undefined);
+    const [status, setStatus] = useState<PaymentStatus>('loading');
+    const [error, setError] = useState<string | null>(null);
 
-  const handleScan = () => {
-    setIsScanning(true);
-    setTimeout(() => {
-      onPaymentComplete();
-    }, 2500);
-  };
+    const fetchCheckoutUrl = useCallback(async () => {
+        setStatus('loading');
+        setError(null);
+        setCheckoutUrl(undefined);
 
-  return (
-    <div className="h-screen flex flex-col items-center justify-center p-6 bg-white">
- 
+        try {
+            const response = await fetch(BACKEND_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: fixedTotalAmount }),
+            });
 
-      <div className="max-w-2xl w-full bg-white rounded-3xl border-2 border-gray-200 p-8">
-        <div className="text-center">
-          {!isScanning ? (
-            <>
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-50 rounded-full mb-5">
-                <CreditCard className="w-10 h-10" style={{ color: '#004030' }} />
-              </div>
-              
-              <h2 className="text-3xl mb-3" style={{ color: '#004030' }}>
-                Pago de tu Taza
-              </h2>
-              <p className="text-sm text-gray-600 mb-6">
-                Escanea el código QR para completar tu pago
-              </p>
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Error (${response.status}): ${text}`);
+            }
 
-              <div className="bg-gray-50 rounded-2xl p-6 mb-6 inline-block border-2 border-gray-200">
-                {/* QR Code simulado */}
-                <div 
-                  className="w-56 h-56 bg-white border-4 rounded-xl flex items-center justify-center cursor-pointer hover:scale-105 transition-transform"
-                  style={{ borderColor: '#004030' }}
-                  onClick={handleScan}
+            const data = await response.json();
+            const receivedUrl = data.checkoutUrl;
+
+            if (!receivedUrl) throw new Error("El backend no devolvió 'checkoutUrl'.");
+
+            setCheckoutUrl(receivedUrl);
+            setStatus('qr_ready');
+            console.log("🔵 Checkout URL recibida:", receivedUrl);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Error desconocido.';
+            setError(msg);
+            setStatus('error');
+        }
+    }, [onPaymentComplete]);
+
+    useEffect(() => {
+        fetchCheckoutUrl();
+    }, [fetchCheckoutUrl]);
+
+    const renderTitle = () => {
+        if (status === 'loading') return 'Generando Código QR...';
+        if (status === 'error') return 'Error al generar pago';
+        return 'Pago de tu Taza';
+    };
+
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-100">
+            <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
+                {/* Icono superior */}
+                <div
+                    className="flex items-center justify-center w-16 h-16 rounded-full mb-4 mx-auto"
+                    style={{
+                        backgroundColor:
+                            status === 'qr_ready'
+                                ? '#D1FAE5'
+                                : status === 'error'
+                                ? '#FEE2E2'
+                                : '#E5E7EB',
+                        color:
+                            status === 'qr_ready'
+                                ? '#00A650'
+                                : status === 'error'
+                                ? '#EF4444'
+                                : '#6B7280',
+                    }}
                 >
-                  <QrCode className="w-44 h-44" style={{ color: '#004030' }} />
+                    {status === 'loading' && <RefreshCw className="w-8 h-8 animate-spin" />}
+                    {status === 'qr_ready' && <QrCode className="w-8 h-8" />}
+                    {status === 'error' && <XCircle className="w-8 h-8" />}
                 </div>
-              </div>
 
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 max-w-md mx-auto mb-4">
-                <p className="mb-2 text-xs text-gray-700">Instrucciones de pago:</p>
-                <ol className="text-left text-xs text-gray-600 space-y-1">
-                  <li>1. Abre tu app de pagos móviles</li>
-                  <li>2. Escanea el código QR</li>
-                  <li>3. Confirma el monto: $174.00 MXN</li>
-                  <li>4. Completa el pago</li>
-                </ol>
-              </div>
+                {/* Título */}
+                <h2 className="text-2xl font-bold mb-3 text-center text-gray-800">{renderTitle()}</h2>
 
-              <div className="text-2xl" style={{ color: '#004030' }}>
-                Total: $174.00 MXN
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-50 rounded-full mb-5">
-                <CheckCircle2 className="w-10 h-10 animate-pulse" style={{ color: '#004030' }} />
-              </div>
-              
-              <h2 className="text-3xl mb-3" style={{ color: '#004030' }}>
-                Procesando Pago
-              </h2>
-              <p className="text-sm text-gray-600">
-                Verificando tu pago...
-              </p>
-              
-              <div className="mt-6 flex items-center justify-center gap-2">
-                <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#004030', animationDelay: '0ms' }} />
-                <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#004030', animationDelay: '150ms' }} />
-                <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#004030', animationDelay: '300ms' }} />
-              </div>
-            </>
-          )}
+                {/* Mensaje de error */}
+                {status === 'error' && (
+                    <div className="p-3 mb-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg text-left">
+                        <p className="font-bold mb-2 flex items-center">
+                            <XCircle className="w-4 h-4 mr-1" /> Error
+                        </p>
+                        <p className="text-sm break-words">{error}</p>
+                        <button
+                            onClick={fetchCheckoutUrl}
+                            className="mt-3 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 py-1.5 px-3 rounded-lg flex items-center justify-center"
+                        >
+                            <RefreshCw className="w-4 h-4 mr-1" /> Reintentar
+                        </button>
+                    </div>
+                )}
+
+                {/* Sección principal QR / instrucciones */}
+                {status !== 'error' && (
+                    <>
+                        <p className="text-base text-gray-600 mb-4 text-center">
+                            Total:{' '}
+                            <span className="font-extrabold text-teal-600">
+                                ${fixedTotalAmount.toFixed(2)} MXN
+                            </span>
+                        </p>
+
+                        <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200 shadow-inner flex justify-center">
+                            {status === 'loading' ? (
+                                <div className="py-8">
+                                    <RefreshCw className="w-10 h-10 mx-auto text-teal-500 animate-spin" />
+                                    <p className="text-sm text-gray-500 mt-2 text-center">Conectando...</p>
+                                </div>
+                            ) : (
+                                checkoutUrl && (
+                                    <QRCodeSVG
+                                        value={checkoutUrl}
+                                        size={200}
+                                        level="H"
+                                        fgColor="#00A650"
+                                        className="rounded-lg"
+                                        style={{ border: '3px solid #00A650', padding: '12px' }}
+                                    />
+                                )
+                            )}
+                        </div>
+
+                        {/* Instrucciones QR */}
+                        {status === 'qr_ready' && (
+                            <div className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-sm text-gray-700 shadow-md mb-4">
+                                <h4 className="font-semibold text-gray-800 mb-1">Instrucciones QR:</h4>
+                                <ol className="list-decimal list-inside space-y-1">
+                                    <li>Abre tu app de Mercado Pago.</li>
+                                    <li>Selecciona "Pagar con QR".</li>
+                                    <li>Escanea el código.</li>
+                                    <li>Completa el pago con tarjetas de prueba.</li>
+                                </ol>
+                            </div>
+                        )}
+
+                        {/* Opción de pago en efectivo */}
+                        <div className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-sm text-gray-700 shadow-md">
+                            <h4 className="font-semibold text-gray-800 mb-1">Pago en efectivo:</h4>
+                            <p className="mb-2">
+                                Si deseas pagar en efectivo, puedes ir a nuestra tienda física y mostrar este código o mencionar tu pedido.
+                            </p>
+                            <button
+                                className="w-full text-white bg-teal-600 hover:bg-teal-700 py-2 rounded-lg font-semibold"
+                                onClick={() => alert('Opción de pago en efectivo seleccionada')}
+                            >
+                                Seleccionar Pago en Efectivo
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }

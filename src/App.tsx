@@ -9,7 +9,6 @@ import { Timer } from './components/Timer';
 import { OrderConfirmation } from './components/OrderConfirmation';
 import { PaymentQR } from './components/PaymentQR';
 import { ThankYou } from './components/ThankYou';
-
 export type Step = 'welcome' | 'splash' | 'catalog' | 'bluetooth' | 'send' | 'adjust' | 'timer' | 'confirmation' | 'payment' | 'thankyou';
 
 export default function App() {
