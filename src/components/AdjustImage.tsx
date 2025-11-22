@@ -1,22 +1,54 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
-import { RotateCw, ZoomIn, Move, X, ArrowRight } from 'lucide-react';
+import { RotateCw, ZoomIn, Move, X, ArrowRight, Loader2 } from 'lucide-react'; // Agregué Loader2
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { uploadImageToFirebase } from '../firebase/client'; // <--- IMPORTANTE: Tu función de backend
 
 interface AdjustImageProps {
   imageUrl: string;
   onCancel: () => void;
-  onContinue: () => void;
+  // CAMBIO: Ahora onContinue recibe la URL de Firebase y los ajustes (opcional)
+  onContinue: (firebaseUrl: string, adjustments: any) => void;
 }
 
 export function AdjustImage({ imageUrl, onCancel, onContinue }: AdjustImageProps) {
   const [scale, setScale] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  
+  // ESTADO NUEVO: Para saber si estamos subiendo
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleRotate = () => {
     setRotation((prev) => (prev + 90) % 360);
+  };
+
+  // --- LÓGICA DE BACKEND ---
+  const handleSaveAndContinue = async () => {
+    if (isUploading) return;
+    setIsUploading(true);
+
+    try {
+      // 1. Convertimos la URL de vista previa (blob/local) a un archivo físico para subir
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "diseño_taza.jpg", { type: blob.type });
+
+      // 2. Subimos a Firebase usando TU función
+      console.log("Subiendo imagen a Firebase...");
+      const publicUrl = await uploadImageToFirebase(file);
+
+      // 3. Pasamos la URL real y los datos de ajuste al siguiente paso
+      // (Pasamos los ajustes por si quisieras guardarlos en la BD para saber cómo la quería el cliente)
+      onContinue(publicUrl, { scale, rotation, position });
+
+    } catch (error) {
+      console.error("Error al subir:", error);
+      alert("Hubo un error al subir la imagen. Revisa tu conexión.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -120,18 +152,31 @@ export function AdjustImage({ imageUrl, onCancel, onContinue }: AdjustImageProps
               <Button
                 onClick={onCancel}
                 variant="outline"
+                disabled={isUploading} // Deshabilitar si está subiendo
                 className="py-5 rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 text-sm"
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
+              
+              {/* BOTÓN MODIFICADO */}
               <Button
-                onClick={onContinue}
+                onClick={handleSaveAndContinue}
+                disabled={isUploading}
                 className="py-5 rounded-xl text-white hover:opacity-90 text-sm"
                 style={{ backgroundColor: '#004030' }}
               >
-                Siguiente
-                <ArrowRight className="w-4 h-4 ml-2" />
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    Siguiente
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </Button>
             </div>
           </div>

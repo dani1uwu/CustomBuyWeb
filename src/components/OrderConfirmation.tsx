@@ -1,14 +1,19 @@
+import { useState } from 'react';
 import { Button } from './ui/button';
-import { ArrowRight, X, Check } from 'lucide-react';
+import { ArrowRight, X, Check, Loader2 } from 'lucide-react'; 
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { createOrder } from '../firebase/client'; 
 
 interface OrderConfirmationProps {
   imageUrl: string;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (orderId: string) => void;
+  adjustments: any; // <--- NUEVO: Recibimos los ajustes (zoom, posición)
 }
 
-export function OrderConfirmation({ imageUrl, onCancel, onConfirm }: OrderConfirmationProps) {
+export function OrderConfirmation({ imageUrl, onCancel, onConfirm, adjustments }: OrderConfirmationProps) {
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const orderDetails = {
     product: 'Taza Personalizada',
     material: 'Cerámica blanca',
@@ -16,6 +21,49 @@ export function OrderConfirmation({ imageUrl, onCancel, onConfirm }: OrderConfir
     finish: 'Sublimación premium',
     price: 150.00,
     estimatedTime: '5-10 minutos'
+  };
+
+  const tax = orderDetails.price * 0.16;
+  const total = orderDetails.price + tax;
+
+  const handleConfirm = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+
+    try {
+      // 1. Preparamos el objeto COMPLETO para la Base de Datos
+      const orderData = {
+        product: orderDetails.product,
+        details: {
+          material: orderDetails.material,
+          size: orderDetails.size,
+          finish: orderDetails.finish
+        },
+        // Guardamos los ajustes técnicos por si producción los necesita
+        designAdjustments: adjustments, 
+        pricing: {
+          subtotal: orderDetails.price,
+          tax: tax,
+          total: total
+        },
+        imageUrl: imageUrl,
+        paymentStatus: 'pending',
+        status: 'created'
+      };
+
+      // 2. Guardar en Firebase
+      //console.log("Creando orden en Firebase...", orderData);
+      const orderId = await createOrder(orderData);
+
+      // 3. Avanzar
+      onConfirm(orderId);
+
+    } catch (error) {
+      console.error("Error al confirmar:", error);
+      alert("Hubo un error al guardar tu pedido. Intenta nuevamente.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -37,12 +85,12 @@ export function OrderConfirmation({ imageUrl, onCancel, onConfirm }: OrderConfir
               </h3>
               <div className="flex items-center justify-center">
                 <div className="relative">
-                  {/* Simulación de taza */}
                   <div className="w-64 h-64 bg-white rounded-lg shadow-xl flex items-center justify-center overflow-hidden border-4 border-gray-200">
                     <ImageWithFallback
                       src={imageUrl}
                       alt="Diseño personalizado"
                       className="max-w-[70%] max-h-[70%] object-contain"
+                      // Opcional: Podrías aplicar los estilos aquí también si quisieras simularlo igual
                     />
                   </div>
                   <div className="mt-2 text-center text-xs text-gray-600">
@@ -101,13 +149,13 @@ export function OrderConfirmation({ imageUrl, onCancel, onConfirm }: OrderConfir
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-600">IVA (16%):</span>
-                  <span className="text-xs text-gray-800">${(orderDetails.price * 0.16).toFixed(2)} MXN</span>
+                  <span className="text-xs text-gray-800">${tax.toFixed(2)} MXN</span>
                 </div>
                 <div className="h-px bg-gray-200 my-1" />
                 <div className="flex justify-between items-center text-base pt-1">
                   <span style={{ color: '#004030' }}>Total:</span>
                   <span style={{ color: '#004030' }}>
-                    ${(orderDetails.price * 1.16).toFixed(2)} MXN
+                    ${total.toFixed(2)} MXN
                   </span>
                 </div>
               </div>
@@ -123,18 +171,29 @@ export function OrderConfirmation({ imageUrl, onCancel, onConfirm }: OrderConfir
               <Button
                 onClick={onCancel}
                 variant="outline"
+                disabled={isProcessing}
                 className="py-5 rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 text-sm"
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
               <Button
-                onClick={onConfirm}
+                onClick={handleConfirm}
+                disabled={isProcessing}
                 className="py-5 rounded-xl text-white hover:opacity-90 text-sm"
                 style={{ backgroundColor: '#004030' }}
               >
-                Confirmar y Pagar
-                <ArrowRight className="w-4 h-4 ml-2" />
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    Confirmar y Pagar
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </Button>
             </div>
           </div>

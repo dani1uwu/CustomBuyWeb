@@ -1931,3 +1931,19 @@ html {
     transform: none;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden; /* Oculta todo */
+  }
+  #ticket-area, #ticket-area * {
+    visibility: visible; /* Muestra solo el ticket */
+  }
+  #ticket-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 58mm; /* Ancho estándar de papel térmico */
+    font-family: 'Courier New', monospace; /* Fuente tipo ticket */
+  }
+}

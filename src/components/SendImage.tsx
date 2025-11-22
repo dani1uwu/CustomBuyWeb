@@ -1,103 +1,154 @@
-import { useState } from 'react';
-import { Upload, Bluetooth, CheckCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { QrCode, Smartphone, Loader2, RefreshCw, ArrowLeft } from 'lucide-react';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import { Button } from './ui/button';
+import QRCode from 'react-qr-code';
 
 interface SendImageProps {
   onImageSent: (imageUrl: string) => void;
+  onCancel: () => void; // Nueva prop para cancelar
 }
 
-export function SendImage({ onImageSent }: SendImageProps) {
-  const [isReceiving, setIsReceiving] = useState(false);
-  const [progress, setProgress] = useState(0);
+export function SendImage({ onImageSent, onCancel }: SendImageProps) {
+  const [sessionId, setSessionId] = useState('');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'received'>('loading');
+  const [timeoutWarning, setTimeoutWarning] = useState(false);
 
-  const handleReceiveImage = () => {
-    setIsReceiving(true);
-    setProgress(0);
+  // Función para iniciar una sesión nueva
+  const startSession = async () => {
+    setStatus('loading');
+    setTimeoutWarning(false);
+    
+    const newSessionId = Date.now().toString();
+    setSessionId(newSessionId);
 
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            onImageSent('https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800');
-          }, 500);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    const sessionRef = doc(db, 'sessions', newSessionId);
+    await setDoc(sessionRef, { status: 'waiting', imageUrl: null });
+    
+    setStatus('ready');
+    return sessionRef;
   };
 
+  useEffect(() => {
+    let unsubscribe = () => {};
+
+    const init = async () => {
+      const sessionRef = await startSession();
+
+      // Suscribirse a cambios
+      unsubscribe = onSnapshot(sessionRef, (docSnap) => {
+        const data = docSnap.data();
+        if (data && data.imageUrl) {
+          setStatus('received');
+          setTimeout(() => {
+            onImageSent(data.imageUrl);
+          }, 1500);
+        }
+      });
+    };
+
+    init();
+
+    // --- TEMPORIZADOR DE SEGURIDAD ---
+    // Si en 60 segundos no ha pasado nada, mostramos advertencia
+    const timer = setTimeout(() => {
+      setTimeoutWarning(true);
+    }, 60000); // 60 segundos
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
+  }, [onImageSent]);
+
+  // La URL que abrirá el celular
+  const uploadUrl = `${window.location.origin}/upload/${sessionId}`;
+
   return (
-    <div className="h-screen flex flex-col items-center justify-center p-6 bg-white">
-    
-      <div className="max-w-2xl w-full bg-white rounded-3xl border-2 border-gray-200 p-8">
-        <div className="text-center">
+    <div className="h-screen flex flex-col items-center justify-center p-6 bg-white relative">
+      
+      {/* Botón de Cancelar (Arriba a la izquierda o flotante) */}
+      <div className="absolute top-8 left-8">
+        <Button 
+          variant="outline" 
+          onClick={onCancel}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Regresar
+        </Button>
+      </div>
+
+      <div className="max-w-2xl w-full bg-white rounded-3xl border-2 border-gray-200 p-8 text-center">
+          
+          {/* Icono */}
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-50 rounded-full mb-5">
-            {isReceiving && progress < 100 ? (
-              <Bluetooth className="w-10 h-10 animate-pulse" style={{ color: '#004030' }} />
-            ) : progress === 100 ? (
-              <CheckCircle2 className="w-10 h-10" style={{ color: '#004030' }} />
+            {status === 'received' ? (
+              <div className="animate-bounce text-green-600">
+                <Smartphone className="w-10 h-10" />
+              </div>
             ) : (
-              <Upload className="w-10 h-10" style={{ color: '#004030' }} />
+              <QrCode className="w-10 h-10" style={{ color: '#004030' }} />
             )}
           </div>
 
-          <h2 className="text-3xl mb-3" style={{ color: '#004030' }}>
-            Enviar Imagen
+          <h2 className="text-3xl mb-2 font-bold" style={{ color: '#004030' }}>
+            {status === 'received' ? '¡Imagen Recibida!' : 'Escanea para subir'}
           </h2>
           
-          {!isReceiving && (
-            <>
-              <p className="text-sm text-gray-600 mb-6">
-                Envía tu imagen desde tu dispositivo móvil
-              </p>
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 mb-6">
-                <p className="text-sm text-gray-700 mb-2">Instrucciones:</p>
-                <ol className="text-left text-xs text-gray-600 space-y-1 max-w-md mx-auto">
-                  <li>1. Abre tu galería de fotos</li>
-                  <li>2. Selecciona la imagen que deseas</li>
-                  <li>3. Comparte vía Bluetooth o QR</li>
-                  <li>4. Selecciona "Kiosco Personalización"</li>
-                </ol>
-              </div>
-              <Button
-                onClick={handleReceiveImage}
-                className="px-10 py-5 rounded-xl text-white hover:opacity-90"
-                style={{ backgroundColor: '#004030' }}
-              >
-                Listo para Recibir
-              </Button>
-            </>
-          )}
+          <p className="text-sm text-gray-600 mb-8">
+            {status === 'received' 
+              ? 'Procesando tu diseño...' 
+              : 'Usa la cámara de tu celular para enviar tu foto'}
+          </p>
 
-          {isReceiving && progress < 100 && (
-            <div className="space-y-5">
-              <p className="text-sm text-gray-600">
-                Recibiendo imagen...
-              </p>
-              <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                <div 
-                  className="h-full transition-all duration-300 ease-out rounded-full"
-                  style={{ 
-                    width: `${progress}%`,
-                    backgroundColor: '#004030'
-                  }}
-                />
+          {/* QR */}
+          <div className="flex flex-col items-center justify-center space-y-6">
+            
+            {status === 'loading' ? (
+              <div className="h-[220px] flex items-center justify-center">
+                <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
               </div>
-              <p className="text-xl" style={{ color: '#004030' }}>{progress}%</p>
-            </div>
-          )}
+            ) : (
+              <div className={`p-4 bg-white rounded-2xl shadow-lg border-2 border-gray-100 transition-all duration-500 ${status === 'received' ? 'opacity-50 scale-95' : 'opacity-100'}`}>
+                <QRCode value={uploadUrl} size={220} fgColor="#004030" />
+              </div>
+            )}
 
-          {progress === 100 && (
-            <div className="space-y-3">
-              <p className="text-base" style={{ color: '#004030' }}>
-                ¡Imagen recibida exitosamente!
-              </p>
-              <p className="text-sm text-gray-600">Redirigiendo...</p>
-            </div>
-          )}
-        </div>
+            {/* Estado y Advertencia de Tiempo */}
+            {timeoutWarning && status !== 'received' ? (
+              <div className="bg-yellow-50 px-4 py-3 rounded-xl border border-yellow-200 flex flex-col items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+                <span className="text-sm text-yellow-800 font-medium">
+                  ¿Tardando mucho? Revisa que estés conectado a internet.
+                </span>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => window.location.reload()} // Reinicia el componente simple
+                  className="text-xs h-8"
+                >
+                  <RefreshCw className="w-3 h-3 mr-2" />
+                  Generar nuevo código
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-gray-50 px-6 py-3 rounded-full border border-gray-200 flex items-center gap-3">
+                {status === 'received' ? (
+                  <>
+                    <div className="w-3 h-3 bg-green-500 rounded-full" />
+                    <span className="text-sm font-medium text-green-700">Conexión exitosa</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-3 h-3 bg-amber-400 rounded-full animate-pulse" />
+                    <span className="text-sm font-medium text-gray-600">Esperando conexión...</span>
+                  </>
+                )}
+              </div>
+            )}
+
+          </div>
       </div>
     </div>
   );

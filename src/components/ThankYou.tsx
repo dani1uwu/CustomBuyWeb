@@ -3,9 +3,10 @@ import { Button } from './ui/button';
 
 interface ThankYouProps {
   onRestart: () => void;
+  orderId: string;
 }
 
-export function ThankYou({ onRestart }: ThankYouProps) {
+export function ThankYou({ onRestart, orderId }: ThankYouProps) {
   return (
     <div className="h-screen flex flex-col items-center justify-center p-6 bg-white">
 
@@ -36,7 +37,7 @@ export function ThankYou({ onRestart }: ThankYouProps) {
           <div className="space-y-3 mb-6">
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 max-w-md mx-auto">
               <p className="text-sm text-gray-700">
-                <span style={{ color: '#004030' }}>Número de orden:</span> #TZ-{Math.floor(Math.random() * 10000).toString().padStart(4, '0')}
+                <span style={{ color: '#004030' }}>Número de orden:</span> #{orderId.slice(-6).toUpperCase()}
               </p>
             </div>
           </div>
@@ -57,6 +58,13 @@ export function ThankYou({ onRestart }: ThankYouProps) {
             <p className="text-gray-500 text-xs">
               ¡Esperamos que disfrutes tu taza personalizada!
             </p>
+          </div>
+
+          <div id="ticket-area" className="hidden print:block">
+            <h3>CUSTOM BUY</h3>
+            <p>Orden: #{orderId}</p>
+            <p>Total: $174.00</p>
+            <p>Gracias por su compra</p>
           </div>
         </div>
       </div>
