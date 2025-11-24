@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Welcome } from './components/Welcome';
 import { SplashScreen } from './components/SplashScreen';
 import { ProductCatalog } from './components/ProductCatalog';
-//import { BluetoothConnection } from './components/BluetoothConnection';
 import { SendImage } from './components/SendImage';
 import { AdjustImage } from './components/AdjustImage';
 import { Timer } from './components/Timer';
@@ -22,11 +21,7 @@ export default function App() {
   }, [currentStep]);
 
   const [orderId, setOrderId] = useState<string | null>(null);
-  
-  // uploadedImage es la imagen local (blob) que el usuario selecciona de su celular
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  
-  // ESTADOS NUEVOS: Para guardar lo que regresa Firebase
   const [finalFirebaseUrl, setFinalFirebaseUrl] = useState<string | null>(null);
   const [imageAdjustments, setImageAdjustments] = useState<any>(null);
 
@@ -42,28 +37,26 @@ export default function App() {
     setCurrentStep('send');
   };
 
-  /*const handleBluetoothConnected = () => {
-    setCurrentStep('send');
-  };*/
-
   const handleImageSent = (imageUrl: string) => {
     setUploadedImage(imageUrl);
     setCurrentStep('adjust');
   };
 
+  // Esta función se usa en "AdjustImage" para cancelar la edición
   const handleCancelImage = () => {
     setUploadedImage(null);
     setCurrentStep('send');
   };
 
-  // --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
-  // Este método ahora recibe los datos desde AdjustImage.tsx
+  const handleBackToCatalog = () => {
+    setUploadedImage(null); // Limpiamos por si acaso
+    setCurrentStep('catalog'); // Regresamos al catálogo
+  };
+
   const handleContinueToTimer = (firebaseUrl: string, adjustments: any) => {
     console.log("URL de Firebase recibida en App:", firebaseUrl);
-    
-    setFinalFirebaseUrl(firebaseUrl); // Guardamos la URL de la nube
-    setImageAdjustments(adjustments); // Guardamos los ajustes (zoom, rotación)
-    
+    setFinalFirebaseUrl(firebaseUrl);
+    setImageAdjustments(adjustments);
     setCurrentStep('timer');
   };
 
@@ -77,9 +70,9 @@ export default function App() {
 
   const handleConfirmOrder = (id: string) => {
     console.log("Orden creada en BD con ID:", id);
-    setOrderId(id); // Guardamos el ID por si el componente de Pago lo necesita
+    setOrderId(id);
     setCurrentStep('payment');
-};
+  };
 
   const handlePaymentComplete = () => {
     setCurrentStep('thankyou');
@@ -87,12 +80,12 @@ export default function App() {
 
   const handleRestart = () => {
     setUploadedImage(null);
-    setFinalFirebaseUrl(null); // Limpiamos también la URL de la nube
+    setFinalFirebaseUrl(null);
     setCurrentStep('welcome');
   };
 
+  // Protección por si recargan en la confirmación sin datos
   if (currentStep === 'confirmation' && !finalFirebaseUrl && !uploadedImage) {
-     // Si estamos en confirmación pero no hay foto (por recargar), volver al inicio
      setCurrentStep('welcome');
   }
 
@@ -107,22 +100,19 @@ export default function App() {
       {currentStep === 'catalog' && (
         <ProductCatalog onProductSelect={handleProductSelect} />
       )}
-      {/*{currentStep === 'bluetooth' && (
-        <BluetoothConnection onConnected={handleBluetoothConnected} />
-      )}*/}
+      
       {currentStep === 'send' && (
         <SendImage 
           onImageSent={handleImageSent} 
-          onCancel={handleCancelImage}
+          onCancel={handleBackToCatalog}
         />
       )}
       
-      {/* Componente de Ajuste actualizado */}
       {currentStep === 'adjust' && uploadedImage && (
         <AdjustImage 
           imageUrl={uploadedImage} 
           onCancel={handleCancelImage}
-          onContinue={handleContinueToTimer} // Ahora coincide con la firma requerida
+          onContinue={handleContinueToTimer}
         />
       )}
       
@@ -130,10 +120,8 @@ export default function App() {
         <Timer onComplete={handleTimerComplete} />
       )}
       
-      {/* Componente de Confirmación */}
       {currentStep === 'confirmation' && (
         <OrderConfirmation 
-          // Le pasamos la URL de Firebase si existe, si no, la local (como fallback visual)
           imageUrl={finalFirebaseUrl || uploadedImage || ''}
           onCancel={handleCancelOrder}
           onConfirm={handleConfirmOrder}
@@ -142,11 +130,16 @@ export default function App() {
       )}
       
       {currentStep === 'payment' && (
-        <PaymentQR onPaymentComplete={handlePaymentComplete} />
+        <PaymentQR 
+          onPaymentComplete={handlePaymentComplete} 
+          orderId={orderId || undefined}
+        />
       )}
       {currentStep === 'thankyou' && (
-        <ThankYou onRestart={handleRestart}
-        orderId={orderId || "Error-ID"} />
+        <ThankYou 
+          onRestart={handleRestart}
+          orderId={orderId || "Error-ID"} 
+        />
       )}
     </div>
   );

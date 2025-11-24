@@ -1947,3 +1947,11 @@ html {
     font-family: 'Courier New', monospace; /* Fuente tipo ticket */
   }
 }
+
+/* Efecto 3D para la tarjeta de crédito */
+.perspective {
+  perspective: 1000px;
+  width: 100%;
+  max-width: 400px; /* Tamaño máximo de la tarjeta */
+  margin: 0 auto;
+}
