@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
-import { ArrowRight, X, Check, Loader2, Ruler } from 'lucide-react'; 
+import { ArrowRight, X, Check, Loader2, Ruler, RotateCw } from 'lucide-react'; 
 import { createOrder } from '../firebase/client'; 
-import { CreditCard } from './ui/CreditCard'; // <--- IMPORTAMOS LA TARJETA
+// import { CreditCard } from './ui/CreditCard'; // <--- YA NO LO NECESITAMOS AQUÍ
+import { Mug3D } from './ui/Mug3D'; // <--- ESTE ES EL BUENO
 
 interface OrderConfirmationProps {
   imageUrl: string;
@@ -14,19 +15,10 @@ interface OrderConfirmationProps {
 export function OrderConfirmation({ imageUrl, onCancel, onConfirm, adjustments }: OrderConfirmationProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Datos de la tarjeta ficticia para la vista previa
-  const previewCard = {
-      cardNumber: "4444555566667777",
-      cardHolder: "USUARIO DEMO",
-      expiryDate: "12/28",
-      cvc: "***"
-  };
-
   const orderDetails = {
     product: 'Taza Personalizada',
     material: 'Cerámica blanca',
     size: '11 oz',
-    // --- NUEVO: Agregamos las dimensiones de sublimación ---
     printArea: '20 cm x 9.5 cm', 
     finish: 'Sublimación premium',
     price: 150.00,
@@ -46,7 +38,7 @@ export function OrderConfirmation({ imageUrl, onCancel, onConfirm, adjustments }
         details: {
           material: orderDetails.material,
           size: orderDetails.size,
-          printArea: orderDetails.printArea, // Guardamos este dato también
+          printArea: orderDetails.printArea,
           finish: orderDetails.finish
         },
         designAdjustments: adjustments, 
@@ -83,34 +75,25 @@ export function OrderConfirmation({ imageUrl, onCancel, onConfirm, adjustments }
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* VISTA PREVIA (Ahora con la Tarjeta 3D) */}
+          
+          {/* --- VISTA PREVIA 3D (LA TAZA) --- */}
           <div className="space-y-6">
-            <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-2 bg-[#004030]"></div>
-              <h3 className="mb-6 text-center font-bold text-gray-700 uppercase tracking-wider">
-                Vista Previa de tu Método de Pago
-              </h3>
+            <div className="bg-gray-50 rounded-3xl p-0 border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden shadow-inner h-[400px]">
+               
+               {/* Etiqueta Flotante */}
+               <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-[#004030] z-10 border border-gray-200 shadow-sm flex items-center gap-1">
+                 <RotateCw className="w-3 h-3" /> VISTA 3D
+               </div>
+
+              {/* AQUÍ ESTÁ LA MAGIA: EL COMPONENTE 3D */}
+              <Mug3D imageUrl={imageUrl} />
               
-              {/* COMPONENTE DE TARJETA (Solo lectura) */}
-              <div className="pointer-events-none transform scale-90 sm:scale-100">
-                  <CreditCard 
-                      cardNumber={previewCard.cardNumber}
-                      cardHolder={previewCard.cardHolder}
-                      expiryDate={previewCard.expiryDate}
-                      cvc={previewCard.cvc}
-                      isFlipped={false}
-                      // Funciones vacías porque es solo lectura
-                      onCardNumberChange={() => {}}
-                      onCardHolderChange={() => {}}
-                      onExpiryChange={() => {}}
-                      onCvcChange={() => {}}
-                      onCvcFocus={() => {}}
-                      onCvcBlur={() => {}}
-                      onOtherFocus={() => {}}
-                  />
-              </div>
-               <p className="text-center text-sm text-gray-400 mt-4">Se usará una tarjeta similar para el pago</p>
             </div>
+            
+            <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+              <RotateCw className="w-3 h-3" />
+              Arrastra para girar la taza
+            </p>
 
             <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-start gap-3">
               <Check className="w-5 h-5 flex-shrink-0 mt-0.5 text-green-600" />
@@ -140,7 +123,7 @@ export function OrderConfirmation({ imageUrl, onCancel, onConfirm, adjustments }
                   <span className="text-gray-500 font-medium">Tamaño:</span>
                   <span className="text-gray-900">{orderDetails.size}</span>
                 </div>
-                {/* --- NUEVO CAMPO: Área de impresión --- */}
+                {/* --- AREA DE IMPRESIÓN --- */}
                  <div className="flex justify-between items-center pb-2 border-b border-gray-50 bg-blue-50 -mx-6 px-6 py-2">
                   <span className="text-blue-700 font-medium flex items-center gap-2">
                     <Ruler className="w-4 h-4" /> Área de impresión:
@@ -185,7 +168,7 @@ export function OrderConfirmation({ imageUrl, onCancel, onConfirm, adjustments }
             <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-4 flex items-start gap-3">
                <div className="text-yellow-600 mt-0.5 font-bold">Nota:</div>
               <p className="text-sm text-yellow-800 leading-relaxed">
-                 Una vez confirmado el pedido, se iniciará el proceso de producción inmediatamente y no se podrán realizar cambios.
+                 Una vez confirmado el pedido, se iniciará el proceso de producción inmediatamente.
               </p>
             </div>
 

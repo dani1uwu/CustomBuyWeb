@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import { Button } from './ui/button';
-import { ArrowRight, X, ZoomIn, RotateCw, Move, Loader2 } from 'lucide-react';
+import { ArrowRight, X, ZoomIn, RotateCw, Move, Loader2, ShieldCheck } from 'lucide-react';
 import { uploadImageToFirebase } from '../firebase/client';
 import getCroppedImg from '../utils/cropImage'; 
 
@@ -38,16 +38,16 @@ export function AdjustImage({ imageUrl, onCancel, onContinue }: AdjustImageProps
     try {
       console.log("1. Iniciando procesamiento de imagen (recorte y rotación)...");
       
-      // 1. Generar el Blob de la imagen editada usando nuestra función auxiliar
+      // 1. Generar el Blob de la imagen editada
       const croppedImageBlob = await getCroppedImg(
         imageUrl,
         croppedAreaPixels,
         rotation
       );
 
-      console.log("2. Imagen editada generada con éxito. Subiendo a la nube...");
+      console.log("2. Imagen editada generada. Subiendo a la nube...");
 
-      // 2. Convertir el Blob a un File para poder subirlo
+      // 2. Convertir el Blob a un File
       const fileToUpload = new File([croppedImageBlob], "taza-editada.jpg", { type: "image/jpeg" });
 
       // 3. Subir la NUEVA imagen editada a Cloudinary
@@ -55,7 +55,7 @@ export function AdjustImage({ imageUrl, onCancel, onContinue }: AdjustImageProps
 
       console.log("3. Subida completada. Nueva URL:", newEditedUrl);
 
-      // 4. Guardar los ajustes técnicos solo como referencia (ya no son vitales para la visualización)
+      // 4. Guardar ajustes (referencia)
       const adjustments = {
         zoom,
         rotation,
@@ -63,7 +63,7 @@ export function AdjustImage({ imageUrl, onCancel, onContinue }: AdjustImageProps
         finalCropPixels: croppedAreaPixels
       };
 
-      // 5. Pasar la NUEVA URL editada a la siguiente pantalla
+      // 5. Pasar la NUEVA URL
       onContinue(newEditedUrl, adjustments);
 
     } catch (error) {
@@ -76,11 +76,21 @@ export function AdjustImage({ imageUrl, onCancel, onContinue }: AdjustImageProps
   return (
     <div className="h-screen flex flex-col items-center justify-center p-6 bg-white">
       <div className="max-w-4xl w-full bg-white rounded-3xl border-2 border-gray-200 p-8">
+        
+        {/* ENCABEZADO */}
         <div className="text-center mb-8">
           <h2 className="text-3xl mb-2 font-bold" style={{ color: '#004030' }}>
             Ajusta tu Imagen
           </h2>
-          <p className="text-gray-500 text-sm">Personaliza el tamaño y posición de tu diseño</p>
+          <p className="text-gray-500 text-sm mb-4">Personaliza el tamaño y posición de tu diseño</p>
+
+          {/* --- AVISO DE PRIVACIDAD (Correctamente anidado) --- */}
+          <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 px-4 py-2 rounded-full">
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span className="text-xs text-blue-800 font-medium">
+              Por tu seguridad, las imágenes se eliminan automáticamente.
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -94,11 +104,11 @@ export function AdjustImage({ imageUrl, onCancel, onContinue }: AdjustImageProps
               crop={crop}
               zoom={zoom}
               rotation={rotation}
-              aspect={3 / 4} // Aspecto vertical para taza (ajusta si es necesario)
+              aspect={2.1 / 1} // Relación panorámica para la taza
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onRotationChange={setRotation}
-              onCropComplete={onCropComplete} // <--- VITAL: Esto captura los datos del recorte
+              onCropComplete={onCropComplete}
               showGrid={false}
               classes={{
                 containerClassName: 'rounded-xl',
