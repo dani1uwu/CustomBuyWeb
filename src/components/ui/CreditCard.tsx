@@ -30,6 +30,42 @@ export function CreditCard({
   onCvcBlur,
   onOtherFocus
 }: CreditCardProps) {
+
+  // === FORMATOS AUTOMÁTICOS ===
+
+  // Formato para tarjeta #### #### #### ####
+  const handleCardNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, ''); // solo números
+    value = value.replace(/(.{4})/g, '$1 ').trim(); // agrega espacios
+    e.target.value = value;
+    onCardNumberChange(e);
+  };
+
+  // Solo letras para el nombre
+  const handleCardHolder = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.target.value = e.target.value.replace(/[^A-Za-z\s]/g, ''); 
+    onCardHolderChange(e);
+  };
+
+  // MM/AA con formato automático
+  const handleExpiry = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, ''); // solo números
+
+    if (value.length >= 3) {
+      value = value.slice(0, 4); // máximo 4 números
+      value = value.replace(/(\d{2})(\d{1,2})/, '$1/$2'); 
+    }
+
+    e.target.value = value;
+    onExpiryChange(e);
+  };
+
+  // CVC solo 3 números
+  const handleCvc = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 3);
+    onCvcChange(e);
+  };
+
   return (
     <div className="perspective">
       <div 
@@ -70,7 +106,7 @@ export function CreditCard({
               <input
                 type="text"
                 value={cardNumber}
-                onChange={onCardNumberChange}
+                onChange={handleCardNumber}
                 onFocus={onOtherFocus}
                 placeholder="#### #### #### ####"
                 className="w-full bg-transparent border-none outline-none text-white tracking-wider placeholder-white placeholder-opacity-40"
@@ -89,7 +125,7 @@ export function CreditCard({
                 <input
                   type="text"
                   value={cardHolder}
-                  onChange={onCardHolderChange}
+                  onChange={handleCardHolder}
                   onFocus={onOtherFocus}
                   placeholder="NOMBRE APELLIDO"
                   className="w-full bg-transparent border-none outline-none text-white tracking-wide placeholder-white placeholder-opacity-40 uppercase"
@@ -102,7 +138,7 @@ export function CreditCard({
                 <input
                   type="text"
                   value={expiryDate}
-                  onChange={onExpiryChange}
+                  onChange={handleExpiry}
                   onFocus={onOtherFocus}
                   placeholder="MM/AA"
                   className="w-full bg-transparent border-none outline-none text-white tracking-wide placeholder-white placeholder-opacity-40"
@@ -141,7 +177,7 @@ export function CreditCard({
           />
         </div>
 
-        {/* Parte trasera de la tarjeta */}
+        {/* Parte trasera */}
         <div 
           className="card-face card-back"
           style={{
@@ -179,7 +215,7 @@ export function CreditCard({
             <input
               type="text"
               value={cvc}
-              onChange={onCvcChange}
+              onChange={handleCvc}
               onFocus={onCvcFocus}
               onBlur={onCvcBlur}
               placeholder="***"

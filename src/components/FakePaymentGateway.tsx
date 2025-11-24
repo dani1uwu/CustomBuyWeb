@@ -34,7 +34,7 @@ export function FakePaymentGateway() {
         const orderRef = doc(db, 'orders', orderId);
         await updateDoc(orderRef, { 
           paymentStatus: 'paid',
-          status: 'processing',
+          status: 'pending',
           paidAt: new Date()
         });
 
